@@ -1,2 +1,11 @@
+struct T {
+  int x;
+  // for string test
+  char name[4];
+  // for polymorphism test
+  void *ptr;
+};
 
-int plus_one(int x);
+void plus_one(struct T *t);
+
+int read_int(const struct T *t);
