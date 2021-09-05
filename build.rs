@@ -7,7 +7,7 @@ use std::path::PathBuf;
 // https://doc.rust-lang.org/cargo/reference/build-scripts.html
 fn main() {
     let c_lib_name = "mylib";
-    println!("cargo:rerun-if-changed=c-src/{}.c", c_lib_name);
+    println!("cargo:rerun-if-changed=c-src/*");
     println!("cargo:rustc-link-lib={}", c_lib_name);
 
     cc::Build::new()

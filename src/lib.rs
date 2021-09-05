@@ -40,4 +40,38 @@ mod tests {
             assert_eq!(name, "abc");
         }
     }
+
+    #[test]
+    fn polymorphism_test() {
+        trait Processor {
+            fn process(&self, data: &mut i32);
+        }
+        struct MyProcessor {}
+
+        impl Processor for MyProcessor {
+            fn process(&self, data: &mut i32) {
+                *data *= 2;
+            }
+        }
+
+        // callback function for C
+        unsafe extern "C" fn change_data(data: *mut i32, param: *const ::std::os::raw::c_void) {
+            let processor = (param as *const Box<dyn Processor>).as_ref().unwrap();
+            processor.process(data.as_mut().unwrap());
+        }
+        unsafe {
+            let mut t: mylib::T = mem::zeroed();
+            t.x = 3;
+
+            let p = MyProcessor {};
+            // NOTE: we must explicitly pass it as Box<dyn Trait>
+            let raw_p = Box::into_raw(Box::new(Box::new(p) as Box<dyn Processor>));
+            mylib::register_callback(&mut t as _, Some(change_data), raw_p as _);
+            mylib::trigger_callback(&mut t as _);
+
+            // collect memory
+            Box::from_raw(raw_p);
+            assert_eq!(6, t.x);
+        }
+    }
 }
