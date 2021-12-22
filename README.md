@@ -22,31 +22,40 @@ We can use `as` to convert Rust reference to C pointer, the `mut` and `const` ke
 | `*const T` | `NULL` | `::std::ptr::null::<T>()` | /  |
 
 
-## Strings
+## String
 
-There are several scenarios when convert strings:
+There are two important differences between Rust string and C string, which makes the conversion difficult:
 
-- Copy
-  - Rust `String` to (or from) C `char[]`
-- Non-Copy
-  - Rust `str` to (or from) C `char[]`
+- Rust `String` is an array of `u8`, but c string is an array of `i8`.
 
-Rust's string is an array of `u8`, but C's string is an array of `i8`, a.k.a, `c_char`. This introduce extra complexity in conversion of Rust and C strings.
+- Rust `String` (and `str`) does not guarantee it ends with `\0`.
 
+The 2nd difference makes it **unsafe** to directly covert a Rust string into a `const char*` (though there is no any warning that prevent you do so).  See [Rust FFI: Sending strings to the outside world | Huy's Blog (thefullsnack.com)](https://thefullsnack.com/en/string-ffi-rust.html).
 
 
-### Convert string with copy
+
+To bridge Rust string with C string, Rust provides a set of C-compatible string types: `CString` and `CStr`. They are compatible to C strings, i.e., **nul-terminated string with no nul bytes in the middle**.
+
+
+### Convert string
+
+- When convert rust `String` to C `const char*`, we must use `CString` as intermediate.
+
+| Rust | C | to C | from C (unsafe) |
+| :-: | :-: | :-: | :-: |
+| `String` | `const char*` | `CString::new()` + `as_ptr()` | `std::ffi::CStr::from_ptr()` |
+
+### Convert byte array with copy
 
 | Rust | C | to C | from C (unsafe) |
 | :-: | :-: | :-: | :-: |
 | array `[i8; N]` | `char[N]` | loop and assign | loop and assign |
 
-### Convert string without copy
+### Convert byte array without copy
 
 | Rust | C | to C | from C (unsafe) |
 | :-: | :-: | :-: | :-: |
 | array `[i8; N]` | `const char*` | `as_ptr()` | `std::ffi::CStr::from_ptr()` |
-
 
 ## Polymorphism and `dyn` trait
 
@@ -85,7 +94,7 @@ Please note that the nested `Box::new`, it is necessary because the `Box<dyn Tra
 ## Unmovable self reference type
 Self reference type is unmovable and need to be carefully handled.
 
-### Undefine behavior if a self reference type is moved
+### Undefined behavior if a self reference type is moved
 
 ```rust
 println!("channel count = {}", OesAsyncApi_GetChannelCount(async_context));
@@ -99,7 +108,9 @@ The code above is a roundtrip from `*mut T` to `Option<T>` and then to `*mut T`.
 channel count = 1
 channel count = -22
 ```
-Interesting! This is because the object is moved when we wrap it into `Option<T>`, and the object is potentially unmovable because it refers to itself.
+Interesting! We did not change the object, but the result changes.
+
+This is because the object is moved when we wrap it into `Option<T>`, but the object is unmovable because it refers to itself.
 
 ```rust
 pub type OesAsyncApiContextT = SEndpointContextT;
@@ -126,4 +137,4 @@ So, if we move this object, it moves to new memory address, but the `pInternalRe
 
 ### Deal with unmovable types
 
-Use `Box::from_raw` and `Box::into_raw` will not move this object.
+`Box::from_raw` and `Box::into_raw` will not move this object. Do not try to deference the pointer and assign, it usually moves the object around.

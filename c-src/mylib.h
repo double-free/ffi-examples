@@ -1,8 +1,10 @@
 typedef void (*CallBack)(int *, const void *);
 struct T {
   int x;
-  // for string test
+  // for char array test
   char name[4];
+  // for c string test
+  const char* description;
   // for polymorphism test
   CallBack callback;
   void *callback_param;

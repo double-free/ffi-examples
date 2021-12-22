@@ -23,7 +23,7 @@ mod tests {
     }
 
     #[test]
-    fn string_to_c_char_test() {
+    fn string_to_c_char_array_test() {
         unsafe {
             // to c_char array
             let s = String::from("abc");
@@ -31,13 +31,30 @@ mod tests {
             let mut t: mylib::T = mem::zeroed();
             // assign one by one
             for (i, c) in c_string.as_bytes_with_nul().iter().enumerate() {
-                t.name[i] = *c as i8;
+                t.name[i] = *c;
             }
             // TODO: any approach that does not require a copy?
 
             // from c_char array (take ownership)
             let name = std::ffi::CStr::from_ptr(t.name.as_ptr()).to_str().unwrap();
             assert_eq!(name, "abc");
+        }
+    }
+
+    #[test]
+    fn string_to_c_string_test() {
+        unsafe {
+            let s = String::from("I'm a shabi");
+            // must convert to CString and ensure '\0' ending
+            let c_string = std::ffi::CString::new(s).unwrap();
+            let mut t: mylib::T = mem::zeroed();
+
+            // Rust string to C string (non-copy)
+            t.description = c_string.as_ptr();
+
+            // from c_char array (take ownership)
+            let name = std::ffi::CStr::from_ptr(t.description).to_str().unwrap();
+            assert_eq!(name, "I'm a shabi");
         }
     }
 
